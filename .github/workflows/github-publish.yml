@@ -3,13 +3,17 @@ on:
   schedule:
     - cron: '24 */6 * * *'
   push:
-    branches: [ master ]
+    branches:
+      - master
+      - dev-*
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - dev-*
 
 jobs:
   build:
@@ -41,30 +45,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract Docker metadata from ghcr.io
-        id: ghcr-io-meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ghcr.io/hellyna/docker-socket-proxy
+      - name: Get branch name
+        id: vars
+        run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
 
-      - name: Extract Docker metadata from docker.io
-        id: docker-io-meta
-        uses: docker/metadata-action@v3
-        with:
-          images: docker.io/quiexotic/docker-socket-proxy
-
-      - name: Build and push Docker image to ghcr.io
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.ghcr-io-meta.outputs.tags }}
-          labels: ${{ steps.ghcr-io-meta.outputs.labels }}
-
-      - name: Build and push Docker image to docker.io
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.docker-io-meta.outputs.tags }}
-          labels: ${{ steps.docker-io-meta.outputs.labels }}
+      - name: Run build and push
+        if: github.event_name != 'pull_request'
+        run: ./.github/workflows/docker-build --tag ${{ steps.vars.outputs.short_ref }} push

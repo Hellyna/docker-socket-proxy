@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -e
+
+args=''
+
+help() {
+  echo "Usage: $0 [--tag <tag>] [push]" >&2
+}
+
+while (( "$#" )); do
+  case "$1" in
+    --tag)
+      if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
+        tag="$2"
+        shift 2
+      else
+        help
+        exit 1
+      fi
+      ;;
+    -*|--*=)
+      help
+      exit 1
+      ;;
+    *)
+      args="$args $1"
+      shift
+      ;;
+  esac
+done
+
+eval set -- "$args"
+
+case "$1" in
+  '')
+    ;;
+  push)
+    push=1
+    ;;
+  *)
+    help
+    exit 1
+    ;;
+esac
+
+if [[ "$tag" = master ]]; then
+  tag=latest
+fi
+
+docker_repos=(
+  docker.io/quiexotic/docker-socket-proxy
+  ghcr.io/hellyna/docker-socket-proxy
+)
+
+for repo in "${docker_repos[@]}"; do
+  docker build --quiet --pull -t "$repo:$tag" .
+
+  case $1 in
+    push)
+      docker push --quiet "$repo:$tag"
+      ;;
+  esac
+done
