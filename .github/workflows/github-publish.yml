@@ -49,6 +49,10 @@ jobs:
         id: vars
         run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
 
+      - name: Cache docker layers
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
       - name: Run build and push
         if: github.event_name != 'pull_request'
         run: ./.github/workflows/docker-build --tag ${{ steps.vars.outputs.short_ref }} push
